@@ -2,9 +2,6 @@ import { connect } from 'mongoose';
 import { Task } from '@/models/Task';
 import { User } from '@/models/User';
 import { sendEmail } from '@/utils/sendEmail';
-import dotenv from 'dotenv';
-
-dotenv.config();
 
 async function sendDailySummaries() {
   await connect(process.env.MONGODB_URI!);

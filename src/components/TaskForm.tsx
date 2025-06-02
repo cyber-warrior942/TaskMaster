@@ -8,7 +8,7 @@ interface TaskFormProps {
   onClose: () => void;
   initialTask?: {
     title: string;
-    description: string;
+    description?: string;
     status: 'pending' | 'in-progress' | 'completed';
   };
   taskId?: string;

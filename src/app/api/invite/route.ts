@@ -48,10 +48,15 @@ export async function POST(req: Request) {
     const inviteLink = `${process.env.NEXT_PUBLIC_BASE_URL}/sign-up?invite=${code}`;
 
     // Send the invitation email using SendGrid
+    const fromEmail = process.env.SENDGRID_FROM_EMAIL;
+    if (!fromEmail) {
+      throw new Error('SENDGRID_FROM_EMAIL is not set');
+    }
+
     const msg = {
       to: email,
       from: {
-        email: process.env.SENDGRID_FROM_EMAIL,
+        email: fromEmail,
         name: 'Your App Name' // You can customize this
       },
       subject: 'You are invited to join our Enterprise Account!',

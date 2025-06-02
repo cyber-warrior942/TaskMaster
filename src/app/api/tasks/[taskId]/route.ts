@@ -11,6 +11,17 @@ interface Params {
   };
 }
 
+interface PublicMetadata {
+  role?: string;
+  plan?: string;
+  [key: string]: any;
+}
+
+interface SessionClaims {
+  publicMetadata?: PublicMetadata;
+  [key: string]: any;
+}
+
 export async function PATCH(req: Request, { params }: Params) {
   try {
     const { userId, sessionClaims } = auth();
@@ -23,11 +34,11 @@ export async function PATCH(req: Request, { params }: Params) {
 
     // Add detailed logging for session claims and public metadata after taskId is defined
     console.log(`PATCH /api/tasks/${taskId}: Raw Session Claims:`, sessionClaims);
-    console.log(`PATCH /api/tasks/${taskId}: Public Metadata:`, sessionClaims?.publicMetadata);
+    console.log(`PATCH /api/tasks/${taskId}: Public Metadata:`, (sessionClaims as SessionClaims)?.publicMetadata);
 
     await connectDB();
 
-    const userRole = sessionClaims?.publicMetadata?.role;
+    const userRole = (sessionClaims as SessionClaims)?.publicMetadata?.role;
     console.log(`PATCH /api/tasks/${taskId}: User ${userId} with role ${userRole} attempting to update task`);
 
     const task = await Task.findOne({ _id: taskId });
@@ -74,7 +85,7 @@ export async function DELETE(req: Request, { params }: Params) {
     const { taskId } = params;
     await connectDB();
 
-    const userRole = sessionClaims?.publicMetadata?.role;
+    const userRole = (sessionClaims as SessionClaims)?.publicMetadata?.role;
     console.log(`DELETE /api/tasks/${taskId}: User ${userId} with role ${userRole} attempting to delete task`);
 
     const task = await Task.findOne({ _id: taskId });

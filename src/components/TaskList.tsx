@@ -50,7 +50,7 @@ export default function TaskList({ isEnterprise, employees, showAddTaskButton }:
                 setIsFormOpen(false);
                 setEditingTask(null);
               }}
-              initialTask={editingTask ? tasks.find((t) => t.id === editingTask) : undefined}
+              initialTask={editingTask ? tasks.find((t) => t._id === editingTask) : undefined}
               taskId={editingTask || undefined}
             />
           </div>
@@ -86,57 +86,61 @@ export default function TaskList({ isEnterprise, employees, showAddTaskButton }:
                   </span>
                 </div>
                 <div className="ml-4 flex items-center space-x-4">
-                  <select
-                    value={task.status}
-                    onChange={(e) =>
-                      handleStatusChange(task._id, e.target.value as 'pending' | 'in-progress' | 'completed')
-                    }
-                    className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                  >
-                    <option value="pending">Pending</option>
-                    <option value="in-progress">In Progress</option>
-                    <option value="completed">Completed</option>
-                  </select>
-
-                  {isAdmin && isEnterprise && employees && (
-                    <select
-                      value={task.assignedTo || ''}
-                      onChange={(e) => {
-                        const employee = employees.find((emp) => emp.id === e.target.value);
-                        if (employee) {
-                          handleAssignTask(task._id, employee.id, employee.name);
+                  {task._id && (
+                    <>
+                      <select
+                        value={task.status}
+                        onChange={(e) =>
+                          handleStatusChange(task._id!, e.target.value as 'pending' | 'in-progress' | 'completed')
                         }
-                      }}
-                      className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                    >
-                      <option value="">Assign to...</option>
-                      {employees.map((employee) => (
-                        <option key={employee.id} value={employee.id}>
-                          {employee.name}
-                        </option>
-                      ))}
-                    </select>
-                  )}
+                        className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="in-progress">In Progress</option>
+                        <option value="completed">Completed</option>
+                      </select>
 
-                  {isAdmin && isEnterprise && (
-                    <button
-                      onClick={() => {
-                        setEditingTask(task._id);
-                        setIsFormOpen(true);
-                      }}
-                      className="text-blue-600 hover:text-blue-900"
-                    >
-                      Edit
-                    </button>
-                  )}
+                      {isAdmin && isEnterprise && employees && (
+                        <select
+                          value={task.assignedTo || ''}
+                          onChange={(e) => {
+                            const employee = employees.find((emp) => emp.id === e.target.value);
+                            if (employee) {
+                              handleAssignTask(task._id!, employee.id, employee.name);
+                            }
+                          }}
+                          className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                        >
+                          <option value="">Assign to...</option>
+                          {employees.map((employee) => (
+                            <option key={employee.id} value={employee.id}>
+                              {employee.name}
+                            </option>
+                          ))}
+                        </select>
+                      )}
 
-                  {isAdmin && isEnterprise && (
-                    <button
-                      onClick={() => deleteTask(task._id)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      Delete
-                    </button>
+                      {isAdmin && isEnterprise && (
+                        <button
+                          onClick={() => {
+                            setEditingTask(task._id!);
+                            setIsFormOpen(true);
+                          }}
+                          className="text-blue-600 hover:text-blue-900"
+                        >
+                          Edit
+                        </button>
+                      )}
+
+                      {isAdmin && isEnterprise && (
+                        <button
+                          onClick={() => deleteTask(task._id!)}
+                          className="text-red-600 hover:text-red-900"
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               </div>

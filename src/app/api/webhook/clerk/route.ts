@@ -1,12 +1,10 @@
-import { WebhookEvent } from '@clerk/nextjs/server';
+import { WebhookEvent, clerkClient } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { Webhook } from 'svix';
 
 import connectDB from '@/lib/db';
 import { Invite } from '@/models/Invite';
-// Import Clerk backend SDK to update user metadata
-import { clerkClient } from '@clerk/backend';
 
 const webhookSecret = process.env.CLERK_WEBHOOK_SECRET || '';
 
@@ -56,8 +54,8 @@ export async function POST(req: Request) {
 
   if (eventType === 'user.created') {
     const user = evt.data;
-    // Clerk automatically includes custom fields in publicMetadata
-    const inviteCode = user.publicMetadata?.invite_code as string | undefined;
+    // Clerk automatically includes custom fields in public_metadata
+    const inviteCode = user.public_metadata?.invite_code as string | undefined;
     const userId = user.id;
 
     if (inviteCode) {

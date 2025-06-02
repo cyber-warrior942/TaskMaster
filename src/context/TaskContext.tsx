@@ -6,7 +6,7 @@ import { useUser } from '@clerk/nextjs';
 
 interface TaskContextType {
   tasks: Task[];
-  addTask: (task: Omit<Task, '_id' | 'createdAt' | 'createdBy' | 'createdByName' | 'status' | 'assignedTo' | 'assignedToName'> & { assignedTo?: string }) => Promise<void>;
+  addTask: (task: Omit<Task, '_id' | 'createdAt' | 'createdBy' | 'createdByName' | 'assignedTo' | 'assignedToName'> & { assignedTo?: string }) => Promise<void>;
   updateTask: (taskId: string, updates: Partial<Task>) => Promise<void>;
   deleteTask: (taskId: string) => Promise<void>;
   assignTask: (taskId: string, userId: string, userName: string) => Promise<void>;
@@ -38,7 +38,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     }
   }, [user]); // Refetch if user changes
 
-  const addTask = async (taskData: Omit<Task, '_id' | 'createdAt' | 'createdBy' | 'createdByName' | 'status' | 'assignedTo' | 'assignedToName'> & { assignedTo?: string }) => {
+  const addTask = async (taskData: Omit<Task, '_id' | 'createdAt' | 'createdBy' | 'createdByName' | 'assignedTo' | 'assignedToName'> & { assignedTo?: string }) => {
     if (!user) return; // Ensure user is authenticated
     try {
       const res = await fetch('/api/tasks', {
