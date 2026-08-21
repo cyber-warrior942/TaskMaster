@@ -1,0 +1,233 @@
+name: Security Gate
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+
+  security-gate:
+    name: High/Critical Security Gate
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Download Gitleaks report
+        uses: actions/download-artifact@v5
+        with:
+          name: gitleaks-report
+          path: reports/gitleaks
+        continue-on-error: true
+
+      - name: Download TruffleHog report
+        uses: actions/download-artifact@v5
+        with:
+          name: trufflehog-report
+          path: reports/trufflehog
+        continue-on-error: true
+
+      - name: Download Semgrep report
+        uses: actions/download-artifact@v5
+        with:
+          name: semgrep-report
+          path: reports/semgrep
+        continue-on-error: true
+
+      - name: Download CodeQL report
+        uses: actions/download-artifact@v5
+        with:
+          name: codeql-report
+          path: reports/codeql
+        continue-on-error: true
+
+      - name: Install jq
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+
+      - name: List reports
+        run: |
+          echo "===== Security Reports ====="
+          find reports -type f -print || true
+
+      - name: Evaluate security findings
+        id: gate
+        run: |
+          set +e
+
+          HIGH=0
+          CRITICAL=0
+          TOTAL=0
+
+          echo "======================================"
+          echo "       SECURITY GATE"
+          echo "======================================"
+
+          #
+          # CODEQL
+          #
+          for file in $(find reports/codeql -type f -name "*.sarif" 2>/dev/null); do
+
+            echo ""
+            echo "Analyzing CodeQL: $file"
+
+            jq -r '
+              .runs[]?.results[]?
+              | {
+                  rule: .ruleId,
+                  level: (.level // "warning"),
+                  severity: (
+                    .properties["security-severity"]
+                    // .properties["security_severity"]
+                    // .rule.properties["security-severity"]
+                    // "0"
+                  )
+                }
+              | "\(.rule) | level=\(.level) | security-severity=\(.severity)"
+            ' "$file" || true
+
+            while read -r severity; do
+
+              if [ -n "$severity" ]; then
+                TOTAL=$((TOTAL + 1))
+
+                if awk "BEGIN {exit !($severity >= 9.0)}"; then
+                  CRITICAL=$((CRITICAL + 1))
+                elif awk "BEGIN {exit !($severity >= 7.0)}"; then
+                  HIGH=$((HIGH + 1))
+                fi
+              fi
+
+            done < <(
+              jq -r '
+                .runs[]?.results[]?
+                | (
+                    .properties["security-severity"]
+                    // .properties["security_severity"]
+                    // .rule.properties["security-severity"]
+                    // "0"
+                  )
+              ' "$file" 2>/dev/null
+            )
+
+          done
+
+
+          #
+          # SEMGREP
+          #
+          for file in $(find reports/semgrep -type f -name "*.sarif" 2>/dev/null); do
+
+            echo ""
+            echo "Analyzing Semgrep: $file"
+
+            jq -r '
+              .runs[]?.results[]?
+              | {
+                  rule: .ruleId,
+                  level: (.level // "warning"),
+                  severity: (
+                    .properties["security-severity"]
+                    // .properties["security_severity"]
+                    // .rule.properties["security-severity"]
+                    // "0"
+                  )
+                }
+              | "\(.rule) | level=\(.level) | security-severity=\(.severity)"
+            ' "$file" || true
+
+            while read -r severity; do
+
+              if [ -n "$severity" ]; then
+                TOTAL=$((TOTAL + 1))
+
+                if awk "BEGIN {exit !($severity >= 9.0)}"; then
+                  CRITICAL=$((CRITICAL + 1))
+                elif awk "BEGIN {exit !($severity >= 7.0)}"; then
+                  HIGH=$((HIGH + 1))
+                fi
+              fi
+
+            done < <(
+              jq -r '
+                .runs[]?.results[]?
+                | (
+                    .properties["security-severity"]
+                    // .properties["security_severity"]
+                    // .rule.properties["security-severity"]
+                    // "0"
+                  )
+              ' "$file" 2>/dev/null
+            )
+
+          done
+
+
+          #
+          # SECRETS
+          #
+          # Policy:
+          # Any detected secret is treated as HIGH.
+          #
+          for file in $(find reports/gitleaks reports/trufflehog \
+                        -type f -name "*.sarif" 2>/dev/null); do
+
+            echo ""
+            echo "Analyzing secrets report: $file"
+
+            SECRET_COUNT=$(jq '
+              [
+                .runs[]?.results[]?
+              ] | length
+            ' "$file" 2>/dev/null)
+
+            SECRET_COUNT=${SECRET_COUNT:-0}
+
+            if [ "$SECRET_COUNT" -gt 0 ]; then
+              echo "Secrets detected: $SECRET_COUNT"
+
+              TOTAL=$((TOTAL + SECRET_COUNT))
+              HIGH=$((HIGH + SECRET_COUNT))
+            fi
+
+          done
+
+
+          echo ""
+          echo "======================================"
+          echo "             RESULTS"
+          echo "======================================"
+
+          echo "Total findings: $TOTAL"
+          echo "High findings: $HIGH"
+          echo "Critical findings: $CRITICAL"
+
+          echo "## Security Gate Results" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Severity | Count |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---:|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Critical | $CRITICAL |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| High | $HIGH |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Total | $TOTAL |" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$CRITICAL" -gt 0 ] || [ "$HIGH" -gt 0 ]; then
+
+            echo ""
+            echo "❌ SECURITY GATE FAILED"
+            echo "High/Critical findings detected."
+
+            exit 1
+
+          else
+
+            echo ""
+            echo "✅ SECURITY GATE PASSED"
+            echo "No High or Critical findings detected."
+
+            exit 0
+
+          fi
