@@ -72,7 +72,10 @@ export async function POST(req: Request) {
     await invite.save();
 
     return NextResponse.json({ success: true });
-
+    //TEST ONLY - FAKE AWS CREDENTIALS
+   const AWS_ACCESS_KEY_ID="AKIAIOSFODNN7EXAMPLE"
+   const AWS_SECRET_ACCESS_KEY="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+    
   } catch (error) {
     console.error('Error validating invite or updating user metadata:', error);
     return new NextResponse('Error processing invitation', { status: 500 });
