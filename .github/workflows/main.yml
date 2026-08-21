@@ -1,4 +1,4 @@
-name: Security Checks
+name: Security Pipeline
 
 on:
   pull_request:
@@ -16,18 +16,49 @@ permissions:
 
 jobs:
 
-  gitleaks:
-    name: Gitleaks
-    uses: ./.github/workflows/gitleaks.yml
+  # ============================================================
+  # SECRETS SCANNING
+  # ============================================================
+
+  secrets-scanning:
+    name: Secrets Scanning
+    uses: ./.github/workflows/secrets-scanning.yml
     permissions:
       contents: read
       security-events: write
 
+
+  # ============================================================
+  # SAST
+  # ============================================================
+
   sast:
     name: SAST
-    needs: gitleaks
     uses: ./.github/workflows/sast.yml
     permissions:
       contents: read
+      actions: read
       security-events: write
+
+
+  # ============================================================
+  # SECURITY GATE
+  #
+  # always() ensures this job executes even when one of the
+  # scanning workflows reports a failure.
+  # ============================================================
+
+  security-gate:
+    name: Security Gate
+
+    needs:
+      - secrets-scanning
+      - sast
+
+    if: always()
+
+    uses: ./.github/workflows/security-gate.yml
+
+    permissions:
+      contents: read
       actions: read
