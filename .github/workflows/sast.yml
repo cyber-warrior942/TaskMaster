@@ -10,6 +10,7 @@ permissions:
   actions: read
 
 jobs:
+
   CodeQL:
     name: CodeQL
     runs-on: ubuntu-latest
@@ -24,10 +25,11 @@ jobs:
           languages: javascript-typescript
           queries: security-extended
 
-      - name: CodeQL Analysis
+      - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4
         with:
           category: "/language:javascript-typescript"
+
 
   Semgrep:
     name: Semgrep
@@ -57,7 +59,7 @@ jobs:
           sarif_file: semgrep.sarif
           category: semgrep
 
-      - name: Upload Semgrep report
+      - name: Upload Semgrep Report
         if: always()
         uses: actions/upload-artifact@v4
         with:
