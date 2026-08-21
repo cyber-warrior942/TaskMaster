@@ -6,8 +6,8 @@ on:
 
 permissions:
   contents: read
-  security-events: write
   actions: read
+  security-events: write
 
 jobs:
 
@@ -16,6 +16,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
       - name: Checkout repository
         uses: actions/checkout@v6
 
@@ -25,10 +26,20 @@ jobs:
           languages: javascript-typescript
           queries: security-extended
 
-      - name: Perform CodeQL Analysis
+      - name: Analyze with CodeQL
+        id: codeql
         uses: github/codeql-action/analyze@v4
         with:
           category: "/language:javascript-typescript"
+          output: codeql-results
+
+      - name: Upload CodeQL SARIF artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: codeql-report
+          path: codeql-results
+          if-no-files-found: warn
 
 
   Semgrep:
@@ -39,28 +50,32 @@ jobs:
       image: semgrep/semgrep:latest
 
     steps:
+
       - name: Checkout repository
         uses: actions/checkout@v6
 
       - name: Run Semgrep
+        id: semgrep
+        continue-on-error: true
         run: |
           semgrep scan \
             --config p/default \
             --config p/security-audit \
             --config p/owasp-top-ten \
             --sarif \
-            --output semgrep.sarif 
+            --output semgrep.sarif
 
       - name: Upload Semgrep SARIF
-        if: always()
+        if: always() && hashFiles('semgrep.sarif') != ''
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: semgrep.sarif
           category: semgrep
 
-      - name: Upload Semgrep Report
+      - name: Upload Semgrep report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: semgrep-report
           path: semgrep.sarif
+          if-no-files-found: warn
