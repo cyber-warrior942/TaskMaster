@@ -11,14 +11,32 @@ permissions:
 
 jobs:
 
+  # ============================================================
+  # CODEQL
+  # ============================================================
+
   CodeQL:
     name: CodeQL
     runs-on: ubuntu-latest
 
     steps:
 
+      # ----------------------------------------------------------
+      # Checkout
+      # ----------------------------------------------------------
+
       - name: Checkout repository
         uses: actions/checkout@v6
+
+
+      # ----------------------------------------------------------
+      # Initialize CodeQL
+      #
+      # javascript-typescript covers:
+      # - JavaScript
+      # - TypeScript
+      # - Node.js applications
+      # ----------------------------------------------------------
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
@@ -26,14 +44,27 @@ jobs:
           languages: javascript-typescript
           queries: security-extended
 
-      - name: Analyze with CodeQL
+
+      # ----------------------------------------------------------
+      # CodeQL analysis
+      #
+      # For JavaScript/TypeScript CodeQL does not require the
+      # Maven/JDK build process used by your previous Java template.
+      # ----------------------------------------------------------
+
+      - name: Perform CodeQL Analysis
         id: codeql
         uses: github/codeql-action/analyze@v4
         with:
           category: "/language:javascript-typescript"
           output: codeql-results
 
-      - name: Upload CodeQL SARIF artifact
+
+      # ----------------------------------------------------------
+      # Upload CodeQL SARIF as artifact
+      # ----------------------------------------------------------
+
+      - name: Upload CodeQL report
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -41,6 +72,10 @@ jobs:
           path: codeql-results
           if-no-files-found: warn
 
+
+  # ============================================================
+  # SEMGREP
+  # ============================================================
 
   Semgrep:
     name: Semgrep
@@ -51,19 +86,37 @@ jobs:
 
     steps:
 
+      # ----------------------------------------------------------
+      # Checkout
+      # ----------------------------------------------------------
+
       - name: Checkout repository
         uses: actions/checkout@v6
+
+
+      # ----------------------------------------------------------
+      # Run Semgrep
+      #
+      # continue-on-error ensures that findings do not stop the
+      # workflow before CodeQL/Security Gate processing.
+      # ----------------------------------------------------------
 
       - name: Run Semgrep
         id: semgrep
         continue-on-error: true
         run: |
+
           semgrep scan \
             --config p/default \
             --config p/security-audit \
             --config p/owasp-top-ten \
             --sarif \
             --output semgrep.sarif
+
+
+      # ----------------------------------------------------------
+      # Upload Semgrep SARIF to GitHub Code Scanning
+      # ----------------------------------------------------------
 
       - name: Upload Semgrep SARIF
         if: always() && hashFiles('semgrep.sarif') != ''
@@ -72,6 +125,11 @@ jobs:
           sarif_file: semgrep.sarif
           category: semgrep
 
+
+      # ----------------------------------------------------------
+      # Upload Semgrep report artifact
+      # ----------------------------------------------------------
+
       - name: Upload Semgrep report
         if: always()
         uses: actions/upload-artifact@v4
@@ -79,3 +137,55 @@ jobs:
           name: semgrep-report
           path: semgrep.sarif
           if-no-files-found: warn
+
+
+      # ----------------------------------------------------------
+      # Semgrep summary
+      # ----------------------------------------------------------
+
+      - name: Semgrep summary
+        if: always()
+        run: |
+
+          echo "# 🔎 Semgrep SAST" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ ! -f semgrep.sarif ]; then
+
+            echo "⚠️ Semgrep did not generate a SARIF report." \
+              >> "$GITHUB_STEP_SUMMARY"
+
+            exit 0
+
+          fi
+
+          COUNT=$(jq '[.runs[]?.results[]?] | length' semgrep.sarif)
+
+          echo "**Total findings:** $COUNT" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$COUNT" -gt 0 ]; then
+
+            echo "| Rule | Severity | File | Line | Description |" \
+              >> "$GITHUB_STEP_SUMMARY"
+
+            echo "|---|---|---|---:|---|" \
+              >> "$GITHUB_STEP_SUMMARY"
+
+            jq -r '
+              .runs[]?.results[]? |
+              [
+                (.ruleId // "unknown"),
+                (.level // "unknown"),
+                (.locations[0].physicalLocation.artifactLocation.uri // "unknown"),
+                (.locations[0].physicalLocation.region.startLine // "?"),
+                (.message.text // "No description")
+              ] |
+              "| \(.[] | tostring | gsub("\\|"; "\\|")) |"
+            ' semgrep.sarif >> "$GITHUB_STEP_SUMMARY"
+
+          else
+
+            echo "## ✅ No Semgrep findings" >> "$GITHUB_STEP_SUMMARY"
+
+          fi
