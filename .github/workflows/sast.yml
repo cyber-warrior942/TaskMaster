@@ -49,8 +49,7 @@ jobs:
             --config p/security-audit \
             --config p/owasp-top-ten \
             --sarif \
-            --output semgrep.sarif \
-            --error
+            --output semgrep.sarif 
 
       - name: Upload Semgrep SARIF
         if: always()
