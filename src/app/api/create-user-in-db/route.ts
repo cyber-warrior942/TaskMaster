@@ -8,7 +8,7 @@ export async function POST(req: Request) {
     console.log('Attempting to create user in MongoDB...');
     await connectDB();
     console.log('Database connected.');
-    console.log('AWS_KEY=AKIA4232KFDFD');
+    console.log('AWS_KEY=AKIA4232KFDFD343243');
     const { userId } = await req.json();
 
     if (!userId) {
