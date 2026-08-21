@@ -18,10 +18,14 @@ jobs:
   gitleaks:
     name: Gitleaks
     uses: ./.github/workflows/gitleaks.yml
-    secrets: inherit
+    permissions:
+      contents: read
+      security-events: write
 
   sast:
     name: SAST
     needs: gitleaks
     uses: ./.github/workflows/sast.yml
-    secrets: inherit
+    permissions:
+      contents: read
+      security-events: write
